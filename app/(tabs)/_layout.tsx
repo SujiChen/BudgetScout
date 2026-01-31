@@ -26,6 +26,14 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="scan"
+        options={{
+          title: 'Scan',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="camera.fill" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Catalog',

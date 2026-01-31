@@ -17,7 +17,7 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome To Budget!</ThemedText>
+        <ThemedText type="title">Welcome To Budget Scout!</ThemedText>
         <HelloWave />
       </ThemedView>
     
