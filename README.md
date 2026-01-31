@@ -1,65 +1,71 @@
-# Welcome to your Expo app 👋
+# BudgetScout 🛒  
+**“Scouting for the best prices”**
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BudgetScout is a mobile app designed to help users save money on everyday groceries with minimal effort. By analyzing shopping habits and identifying frequently purchased items, BudgetScout notifies users when those items go on sale—so they never miss a good deal.
 
-## Get started
+---
 
-To start the app, in your terminal run:
+## 💡 Problem
+Grocery prices fluctuate constantly, and keeping track of sales for items you buy regularly can be time-consuming and overwhelming. Most people don’t have the time to manually compare prices or check weekly ads.
 
-```bash
-npm run start
-```
+---
 
-In the output, you'll find options to open the app in:
+## 🚀 Solution
+BudgetScout simplifies savings by:
+- Scanning grocery store receipts
+- Detecting frequently purchased food items
+- Monitoring price trends
+- Notifying users when commonly bought items are available at a good price
 
-- [a development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [an Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [an iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+All without requiring users to track anything manually.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Workflows
+## 🧾 Key Features
+- 📸 **Receipt Scanning**  
+  Scan receipts from major grocery retailers (e.g., Walmart, Target)
 
-This project is configured to use [EAS Workflows](https://docs.expo.dev/eas/workflows/get-started/) to automate some development and release processes. These commands are set up in [`package.json`](./package.json) and can be run using NPM scripts in your terminal.
+- 🔍 **Purchase Pattern Detection**  
+  Automatically identify items you buy regularly
 
-### Previews
+- 🔔 **Smart Sale Notifications**  
+  Get notified when frequently purchased items are on sale or discounted
 
-Run `npm run draft` to [publish a preview update](https://docs.expo.dev/eas/workflows/examples/publish-preview-update/) of your project, which can be viewed in Expo Go or in a development build.
+- 💰 **Money-Saving Insights**  
+  Learn where and when to buy your groceries for the best value
 
-### Development Builds
+---
 
-Run `npm run development-builds` to [create a development build](https://docs.expo.dev/eas/workflows/examples/create-development-builds/). Note - you'll need to follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/create-development-builds/#prerequisites) to ensure you have the correct emulator setup on your machine.
+## 🏪 Supported Stores (Planned)
+- Walmart  
+- Target  
+- Trader Joes
+- *(More stores to be added)*
 
-### Production Deployments
+---
 
-Run `npm run deploy` to [deploy to production](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/). Note - you'll need to follow the [Prerequisites](https://docs.expo.dev/eas/workflows/examples/deploy-to-production/#prerequisites) to ensure you're set up to submit to the Apple and Google stores.
+## 🛠 Tech Stack
+- **Framework:** Expo (React Native)
+- **Platform:** iOS & Android
+- **Version Control:** Git & GitHub
 
-## Hosting
+---
 
-Expo offers hosting for websites and API functions via EAS Hosting. See the [Getting Started](https://docs.expo.dev/eas/hosting/get-started/) guide to learn more.
+## 📱 Status
+🚧 *Currently in development*
 
+Future plans include:
+- Expanded store support
+- Price comparison across stores
+- Personalized savings analytics
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## 🤝 Contributing
+Contributions are welcome!  
+Feel free to open issues, submit pull requests, or suggest features.
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📄 License
+This project is licensed under the MIT License.
