@@ -3,12 +3,10 @@
 
 BudgetScout is a mobile app designed to help users save money on everyday groceries with minimal effort. By analyzing shopping habits and identifying frequently purchased items, BudgetScout notifies users when those items go on sale—so they never miss a good deal.
 
----
 
 ## 💡 Problem
 Grocery prices fluctuate constantly, and keeping track of sales for items you buy regularly can be time-consuming and overwhelming. Most people don’t have the time to manually compare prices or check weekly ads.
 
----
 
 ## 🚀 Solution
 BudgetScout simplifies savings by:
@@ -19,7 +17,6 @@ BudgetScout simplifies savings by:
 
 All without requiring users to track anything manually.
 
----
 
 ## 🧾 Key Features
 - 📸 **Receipt Scanning**  
@@ -34,7 +31,6 @@ All without requiring users to track anything manually.
 - 💰 **Money-Saving Insights**  
   Learn where and when to buy your groceries for the best value
 
----
 
 ## 🏪 Supported Stores (Planned)
 - Walmart  
@@ -42,14 +38,12 @@ All without requiring users to track anything manually.
 - Trader Joes
 - *(More stores to be added)*
 
----
 
 ## 🛠 Tech Stack
 - **Framework:** Expo (React Native)
 - **Platform:** iOS & Android
 - **Version Control:** Git & GitHub
 
----
 
 ## 📱 Status
 🚧 *Currently in development*
@@ -59,13 +53,11 @@ Future plans include:
 - Price comparison across stores
 - Personalized savings analytics
 
----
 
 ## 🤝 Contributing
 Contributions are welcome!  
 Feel free to open issues, submit pull requests, or suggest features.
 
----
 
 ## 📄 License
 This project is licensed under the MIT License.
