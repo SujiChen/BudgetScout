@@ -20,6 +20,8 @@ export default function HomeScreen() {
         <ThemedText type="title">Welcome To Budget Scout!</ThemedText>
         <HelloWave />
       </ThemedView>
+
+      
     
     </ParallaxScrollView>
   );
