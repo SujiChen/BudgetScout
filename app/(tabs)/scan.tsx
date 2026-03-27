@@ -1,10 +1,11 @@
 import { BrandColors } from '@/constants/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -27,6 +28,9 @@ import { useCatalog } from './CatalogContext';
 
 const { width } = Dimensions.get('window');
 
+// ─── Update this URL whenever ngrok restarts ──────────────────────────────────
+const SCAN_API_URL = 'https://king-breezy-amazingly.ngrok-free.dev/api/scan';
+
 const RETICLE = {
   receipt: { w: width * 0.78, h: 200 },
   barcode: { w: width * 0.78, h: 110 },
@@ -35,16 +39,25 @@ const RETICLE = {
 type ScanMode   = 'receipt' | 'barcode';
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error';
 
-async function ProcessScan(Mode: ScanMode): Promise<string[]> {
-  return new Promise((resolve, reject) =>
-    setTimeout(() => {
-      if (Math.random() > 0.15) resolve(
-        Mode === 'receipt'
-          ? ['Frosted Flakes 10oz — $2.30', 'Great Value Milk 2% — $4.00', 'Dozen Large Eggs — $3.49']
-          : ['Barcode 012345678905 — Frosted Flakes 10oz']
-      );
-      else reject(new Error('Could not read scan'));
-    }, 1800)
+// ─── Call the scan server with a base64 image ─────────────────────────────────
+async function CallScanAPI(base64Image: string): Promise<string[]> {
+  const res = await fetch(SCAN_API_URL, {
+    method:  'POST',
+    headers: {
+       'Content-Type': 'application/json', 
+       'ngrok-skip-browser-warning': 'true',
+      },
+    body:    JSON.stringify({ image: base64Image }),
+  });
+
+  if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+  const json = await res.json();
+  if (!json.items || json.items.length === 0) throw new Error('No items found');
+
+  // Format items as "Name — $Price"
+  return json.items.map((item: { name: string; price: string }) =>
+    `${item.name} — ${item.price}`
   );
 }
 
@@ -56,6 +69,7 @@ export default function ScanScreen() {
   const [Status, SetStatus]             = useState<ScanStatus>('idle');
   const [Results, SetResults]           = useState<string[]>([]);
   const [ShowSheet, SetShowSheet]       = useState(false);
+  const CameraRef                       = useRef<CameraView>(null);
 
   const ReticlePulse  = useSharedValue(1);
   const ReticleColor  = useSharedValue(0);
@@ -123,13 +137,26 @@ export default function ScanScreen() {
 
   async function HandleScan() {
     if (Status === 'scanning') return;
+    if (!CameraRef.current) return;
+
     SetStatus('scanning');
     StopPulse();
     StartScanLine();
     ReticleColor.value = withTiming(0, { duration: 200 });
 
     try {
-      const Items = await ProcessScan(Mode);
+      // Take a photo and get base64
+      const Photo = await CameraRef.current.takePictureAsync({
+        base64:  true,
+        quality: 0.3,
+        exif:    false,
+      });
+
+      if (!Photo?.base64) throw new Error('Could not capture image');
+
+      // Send to scan server
+      const Items = await CallScanAPI(Photo.base64);
+
       StopScanLine();
       ReticleColor.value = withTiming(1, { duration: 300 });
       SetResults(Items);
@@ -138,10 +165,11 @@ export default function ScanScreen() {
         SetShowSheet(true);
         SheetY.value = withSpring(0, { damping: 18, stiffness: 120 });
       }, 400);
-    } catch {
+    } catch (err: any) {
       StopScanLine();
       ReticleColor.value = withTiming(2, { duration: 300 });
       SetStatus('error');
+      console.error('Scan error:', err.message);
       setTimeout(() => ResetScan(), 1800);
     }
   }
@@ -162,45 +190,26 @@ export default function ScanScreen() {
   const ReticleStyle = useAnimatedStyle(() => ({
     width:       CurrentReticle.w,
     height:      CurrentReticle.h,
-    borderColor: interpolateColor(
-      ReticleColor.value,
-      [0, 1, 2],
-      ['#f9a825', BrandColors.mintGreen, '#ef5350']
-    ),
-    opacity: ReticlePulse.value,
+    borderColor: interpolateColor(ReticleColor.value, [0, 1, 2], ['#f9a825', BrandColors.mintGreen, '#ef5350']),
+    opacity:     ReticlePulse.value,
   }));
 
   const CornerColor = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      ReticleColor.value,
-      [0, 1, 2],
-      ['#ffffff', BrandColors.mintGreen, '#ef5350']
-    ),
+    borderColor: interpolateColor(ReticleColor.value, [0, 1, 2], ['#ffffff', BrandColors.mintGreen, '#ef5350']),
   }));
 
   const ScanLineStyle = useAnimatedStyle(() => ({
     opacity:   Status === 'scanning' ? 0.9 : 0,
-    transform: [{
-      translateY: interpolate(
-        ScanLine.value, [0, 1],
-        [0, CurrentReticle.h - 2],
-        Extrapolation.CLAMP
-      ),
-    }],
+    transform: [{ translateY: interpolate(ScanLine.value, [0, 1], [0, CurrentReticle.h - 2], Extrapolation.CLAMP) }],
   }));
 
   const StatusBadgeStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      ReticleColor.value,
-      [0, 1, 2],
-      ['rgba(249,168,37,0.85)', 'rgba(46,204,113,0.85)', 'rgba(239,83,80,0.85)']
-    ),
+    backgroundColor: interpolateColor(ReticleColor.value, [0, 1, 2],
+      ['rgba(249,168,37,0.85)', 'rgba(46,204,113,0.85)', 'rgba(239,83,80,0.85)']),
   }));
 
   const ToggleIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{
-      translateX: interpolate(ModeToggle.value, [0, 1], [0, 130], Extrapolation.CLAMP),
-    }],
+    transform: [{ translateX: interpolate(ModeToggle.value, [0, 1], [0, 130], Extrapolation.CLAMP) }],
   }));
 
   const SheetStyle = useAnimatedStyle(() => ({
@@ -213,9 +222,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.Container, styles.PermissionScreen]}>
         <Text style={styles.PermissionTitle}>Camera Access Needed</Text>
-        <Text style={styles.PermissionSub}>
-          BudgetScout needs camera access to scan receipts and barcodes.
-        </Text>
+        <Text style={styles.PermissionSub}>BudgetScout needs camera access to scan receipts and barcodes.</Text>
         <TouchableOpacity style={styles.PermissionBtn} onPress={RequestPermission}>
           <Text style={styles.PermissionBtnText}>Allow Camera</Text>
         </TouchableOpacity>
@@ -232,7 +239,7 @@ export default function ScanScreen() {
   return (
     <View style={styles.Container}>
       <StatusBar style="light" />
-      <CameraView style={StyleSheet.absoluteFill} facing="back" />
+      <CameraView ref={CameraRef} style={StyleSheet.absoluteFill} facing="back" />
       <View style={styles.Overlay} />
 
       <Animated.View style={[styles.Header, HeaderStyle]}>
@@ -278,22 +285,28 @@ export default function ScanScreen() {
       {ShowSheet && (
         <Animated.View style={[styles.Sheet, SheetStyle]}>
           <View style={styles.SheetHandle} />
-          <Text style={styles.SheetTitle}>Items Found</Text>
-          <View style={styles.ResultsList}>
-            {Results.map((Item, Index) => (
-              <View key={Index} style={styles.ResultRow}>
-                <Text style={styles.ResultDot}>●</Text>
-                <Text style={styles.ResultText}>{Item}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.SheetTitle}>
+            {Results.length > 0 ? `${Results.length} Items Found` : 'No Items Found'}
+          </Text>
+          <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
+            <View style={styles.ResultsList}>
+              {Results.map((Item, Index) => (
+                <View key={Index} style={styles.ResultRow}>
+                  <Text style={styles.ResultDot}>●</Text>
+                  <Text style={styles.ResultText}>{Item}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
           <View style={styles.SheetBtns}>
             <TouchableOpacity style={styles.SheetBtnSecondary} onPress={ResetScan} activeOpacity={0.85}>
               <Text style={styles.SheetBtnSecondaryText}>Scan Again</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.SheetBtnPrimary} onPress={HandleAddToCatalog} activeOpacity={0.85}>
-              <Text style={styles.SheetBtnPrimaryText}>Add to Catalog</Text>
-            </TouchableOpacity>
+            {Results.length > 0 && (
+              <TouchableOpacity style={styles.SheetBtnPrimary} onPress={HandleAddToCatalog} activeOpacity={0.85}>
+                <Text style={styles.SheetBtnPrimaryText}>Add to Catalog</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.View>
       )}
