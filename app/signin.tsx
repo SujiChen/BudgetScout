@@ -3,144 +3,134 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
-// ─── Placeholder auth functions ────────────────────────────────────────────────
-// TODO: Replace with real database calls (e.g. Supabase / Firebase)
-
-async function SignInUser(Username: string, Password: string): Promise<void>
-{
+// ─── Placeholder auth ──────────────────────
+async function SignInUser(Username: string, Password: string): Promise<void> {
   return new Promise((resolve, reject) =>
-  {
     setTimeout(() =>
-    {
-      if (Username && Password.length >= 6)
-      {
-        resolve();
-      }
-      else
-      {
-        reject(new Error('Invalid credentials'));
-      }
-    }, 1000);
-  });
+      Username && Password.length >= 6
+        ? resolve()
+        : reject(new Error('Invalid credentials')),
+    1000)
+  );
 }
 
 async function CreateAccount(
   Username: string,
   Email: string,
   Password: string
-): Promise<void>
-{
+): Promise<void> {
   return new Promise((resolve, reject) =>
-  {
     setTimeout(() =>
-    {
-      if (Username && Email.includes('@') && Password.length >= 6)
-      {
-        resolve();
-      }
-      else
-      {
-        reject(new Error('Please fill in all fields correctly'));
-      }
-    }, 1200);
-  });
+      Username && Email.includes('@') && Password.length >= 6
+        ? resolve()
+        : reject(new Error('Please fill in all fields correctly')),
+    1200)
+  );
 }
-// ───────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 
-export default function SignInScreen()
-{
-  const [IsSignIn, SetIsSignIn] = useState(true);
-  const [Username, SetUsername] = useState('');
-  const [Email, SetEmail] = useState('');
-  const [Password, SetPassword] = useState('');
+function GetPasswordStrength(Password: string): {
+  Score: number;
+  Label: string;
+  Color: string;
+} {
+  if (!Password) return { Score: 0, Label: '', Color: 'transparent' };
+  let Score = 0;
+  if (Password.length >= 6)             Score++;
+  if (Password.length >= 10)            Score++;
+  if (/[A-Z]/.test(Password))           Score++;
+  if (/[0-9!@#$%^&*]/.test(Password))  Score++;
+  const Map = [
+    { Label: 'Too short', Color: '#ef5350' },
+    { Label: 'Weak',      Color: '#ff7043' },
+    { Label: 'Fair',      Color: '#f9a825' },
+    { Label: 'Good',      Color: BrandColors.midGreen },
+    { Label: 'Strong',    Color: BrandColors.deepGreen },
+  ];
+  return { Score, ...Map[Score] };
+}
+
+export default function SignInScreen() {
+  const [IsSignIn, SetIsSignIn]               = useState(true);
+  const [Username, SetUsername]               = useState('');
+  const [Email, SetEmail]                     = useState('');
+  const [Password, SetPassword]               = useState('');
   const [ConfirmPassword, SetConfirmPassword] = useState('');
-  const [IsLoading, SetIsLoading] = useState(false);
-  const [ShowPassword, SetShowPassword] = useState(false);
+  const [IsLoading, SetIsLoading]             = useState(false);
+  const [ShowPassword, SetShowPassword]       = useState(false);
 
-  // Animated slide for toggling sign in / create account
-  const SlideX = useSharedValue(0);
+  const PasswordStrength = GetPasswordStrength(Password);
+  const StrengthBarWidth = Password.length === 0
+    ? 0
+    : (PasswordStrength.Score / 4) * (width - 48 - 32);
 
-  const CardStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: SlideX.value }],
+  // Pill slide
+  const TabWidth = (width - 48 - 8) / 2;
+  const PillX    = useSharedValue(0);
+  const PillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: PillX.value }],
   }));
 
-  function ToggleMode()
-  {
-    const ToRight = IsSignIn ? width : -width;
-    SlideX.value = withTiming(ToRight, { duration: 120, easing: Easing.in(Easing.quad) }, () =>
-    {
-      SlideX.value = -ToRight;
-      SlideX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) });
+  // Card height animates between sign in and sign up sizes
+  const CardH = useSharedValue(420);
+  const CardStyle = useAnimatedStyle(() => ({
+    height: CardH.value,
+  }));
+
+  function ToggleMode() {
+    const GoingToSignUp = IsSignIn;
+    PillX.value = withTiming(GoingToSignUp ? TabWidth : 0, {
+      duration: 250,
+      easing: Easing.out(Easing.quad),
+    });
+    CardH.value = withTiming(GoingToSignUp ? 580 : 420, {
+      duration: 300,
+      easing: Easing.out(Easing.quad),
     });
     SetIsSignIn(!IsSignIn);
-    SetUsername('');
-    SetEmail('');
-    SetPassword('');
-    SetConfirmPassword('');
+    SetUsername(''); SetEmail(''); SetPassword(''); SetConfirmPassword('');
   }
 
-  async function HandleSubmit()
-  {
+  async function HandleSubmit() {
     if (!Username || !Password)
-    {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
-      return;
-    }
+    { Alert.alert('Missing fields', 'Please fill in all required fields.'); return; }
     if (!IsSignIn && Password !== ConfirmPassword)
-    {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
-      return;
-    }
+    { Alert.alert('Password mismatch', 'Passwords do not match.'); return; }
     if (!IsSignIn && Password.length < 6)
-    {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
-      return;
-    }
+    { Alert.alert('Weak password', 'Password must be at least 6 characters.'); return; }
 
     SetIsLoading(true);
-    try
-    {
-      if (IsSignIn)
-      {
-        await SignInUser(Username, Password);
-      }
-      else
-      {
-        await CreateAccount(Username, Email, Password);
-      }
+    try {
+      if (IsSignIn) await SignInUser(Username, Password);
+      else          await CreateAccount(Username, Email, Password);
       router.replace('/(tabs)');
     }
-    catch (Error_: unknown)
-    {
-      const Message = Error_ instanceof Error ? Error_.message : 'Something went wrong';
-      Alert.alert('Error', Message);
-    }
+    catch (Err: unknown)
+    { Alert.alert('Error', Err instanceof Error ? Err.message : 'Something went wrong'); }
     finally
-    {
-      SetIsLoading(false);
-    }
+    { SetIsLoading(false); }
   }
 
   return (
@@ -150,37 +140,60 @@ export default function SignInScreen()
     >
       <StatusBar style="light" />
 
-      {/* Top green header with logo */}
-      <View style={styles.Header}>
+      {/* ── Green top ── */}
+      <View style={styles.GreenTop}>
         <Image
           source={require('@/assets/images/logo.png')}
-          style={styles.HeaderLogo}
+          style={styles.Logo}
           resizeMode="contain"
         />
-        <Text style={styles.HeaderTitle}>BudgetScout</Text>
-        <Text style={styles.HeaderSubtitle}>
-          {IsSignIn ? 'Welcome back, Scout!' : 'Join the hunt for deals!'}
-        </Text>
+        <Text style={styles.AppName}>BudgetScout</Text>
       </View>
 
-      {/* Card */}
-      <ScrollView
-        contentContainerStyle={styles.ScrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View style={[styles.Card, CardStyle]}>
+      {/* ── White card — height animates on toggle ── */}
+      <Animated.View style={[styles.CardWrapper, CardStyle]}>
+        <ScrollView
+          contentContainerStyle={styles.CardScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.DragHandle} />
 
-          <Text style={styles.CardTitle}>
-            {IsSignIn ? 'Sign In' : 'Create Account'}
-          </Text>
+          {/* Pill tab switcher */}
+          <View style={styles.TabPill}>
+            <Animated.View style={[styles.TabIndicator, PillStyle]} />
+            <TouchableOpacity
+              style={styles.TabBtn}
+              onPress={() => !IsSignIn && ToggleMode()}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.TabBtnText,
+                IsSignIn
+                  ? { color: BrandColors.deepGreen, fontWeight: '800' }
+                  : { color: '#bbb', fontWeight: '600' },
+              ]}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.TabBtn}
+              onPress={() => IsSignIn && ToggleMode()}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.TabBtnText,
+                !IsSignIn
+                  ? { color: BrandColors.deepGreen, fontWeight: '800' }
+                  : { color: '#bbb', fontWeight: '600' },
+              ]}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Username */}
-          <View style={styles.InputGroup}>
-            <Text style={styles.Label}>Username</Text>
+          <View style={styles.Field}>
+            <Text style={styles.FieldLabel}>USERNAME</Text>
             <TextInput
               style={styles.Input}
-              placeholder="e.g. scout_shopper"
               placeholderTextColor={BrandColors.muted}
               value={Username}
               onChangeText={SetUsername}
@@ -189,13 +202,12 @@ export default function SignInScreen()
             />
           </View>
 
-          {/* Email — only on create account */}
+          {/* Email — sign up only */}
           {!IsSignIn && (
-            <View style={styles.InputGroup}>
-              <Text style={styles.Label}>Email</Text>
+            <View style={styles.Field}>
+              <Text style={styles.FieldLabel}>EMAIL</Text>
               <TextInput
                 style={styles.Input}
-                placeholder="you@example.com"
                 placeholderTextColor={BrandColors.muted}
                 value={Email}
                 onChangeText={SetEmail}
@@ -207,12 +219,11 @@ export default function SignInScreen()
           )}
 
           {/* Password */}
-          <View style={styles.InputGroup}>
-            <Text style={styles.Label}>Password</Text>
+          <View style={styles.Field}>
+            <Text style={styles.FieldLabel}>PASSWORD</Text>
             <View style={styles.PasswordRow}>
               <TextInput
                 style={[styles.Input, styles.PasswordInput]}
-                placeholder="Min. 6 characters"
                 placeholderTextColor={BrandColors.muted}
                 value={Password}
                 onChangeText={SetPassword}
@@ -220,21 +231,35 @@ export default function SignInScreen()
                 autoCapitalize="none"
               />
               <TouchableOpacity
-                onPress={() => SetShowPassword(!ShowPassword)}
                 style={styles.EyeBtn}
+                onPress={() => SetShowPassword(!ShowPassword)}
               >
-                <Text style={styles.EyeIcon}>{ShowPassword ? '🙈' : '👁️'}</Text>
+                <Text style={{ fontSize: 13, color: BrandColors.muted }}>
+                  {ShowPassword ? 'HIDE' : 'SHOW'}
+                </Text>
               </TouchableOpacity>
             </View>
+            {Password.length > 0 && (
+              <View style={styles.StrengthRow}>
+                <View style={styles.StrengthTrack}>
+                  <View style={[
+                    styles.StrengthFill,
+                    { width: StrengthBarWidth, backgroundColor: PasswordStrength.Color },
+                  ]} />
+                </View>
+                <Text style={[styles.StrengthLabel, { color: PasswordStrength.Color }]}>
+                  {PasswordStrength.Label}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Confirm password — only on create account */}
+          {/* Confirm password — sign up only */}
           {!IsSignIn && (
-            <View style={styles.InputGroup}>
-              <Text style={styles.Label}>Confirm Password</Text>
+            <View style={styles.Field}>
+              <Text style={styles.FieldLabel}>CONFIRM PASSWORD</Text>
               <TextInput
                 style={styles.Input}
-                placeholder="Re-enter password"
                 placeholderTextColor={BrandColors.muted}
                 value={ConfirmPassword}
                 onChangeText={SetConfirmPassword}
@@ -244,35 +269,24 @@ export default function SignInScreen()
             </View>
           )}
 
-          {/* Submit button */}
+          {/* Submit */}
           <TouchableOpacity
-            style={[styles.SubmitBtn, IsLoading && styles.SubmitBtnDisabled]}
+            style={[styles.SubmitBtn, IsLoading && { opacity: 0.7 }]}
             onPress={HandleSubmit}
             disabled={IsLoading}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
             {IsLoading
               ? <ActivityIndicator color={BrandColors.white} />
               : <Text style={styles.SubmitText}>
-                  {IsSignIn ? 'Sign In →' : 'Create Account →'}
+                  {IsSignIn ? 'Sign In' : 'Create Account'}
                 </Text>
             }
           </TouchableOpacity>
 
-          {/* Toggle */}
-          <View style={styles.ToggleRow}>
-            <Text style={styles.TogglePrompt}>
-              {IsSignIn ? "Don't have an account? " : 'Already have an account? '}
-            </Text>
-            <TouchableOpacity onPress={ToggleMode}>
-              <Text style={styles.ToggleLink}>
-                {IsSignIn ? 'Sign Up' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+        </ScrollView>
+      </Animated.View>
 
-        </Animated.View>
-      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -281,74 +295,110 @@ const styles = StyleSheet.create({
   Container: {
     flex: 1,
     backgroundColor: BrandColors.deepGreen,
+    justifyContent: 'flex-end',
   },
-  Header: {
+
+  // ── Green top ──
+  GreenTop: {
+    flex: 1,
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 28,
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    paddingTop: 40,
   },
-  HeaderLogo: {
-    width: 72,
-    height: 72,
-    marginBottom: 8,
+  Logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 12,
   },
-  HeaderTitle: {
-    fontSize: 28,
+  AppName: {
+    fontSize: 30,
     fontWeight: '800',
     color: BrandColors.white,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  HeaderSubtitle: {
-    fontSize: 14,
-    color: BrandColors.mintGreen,
-    marginTop: 4,
-    fontStyle: 'italic',
+
+  // ── White card ──
+  CardWrapper: {
+    backgroundColor: BrandColors.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 20,
+    overflow: 'hidden',
   },
-  ScrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
+  CardScroll: {
+    padding: 24,
     paddingBottom: 40,
   },
-  Card: {
+
+  DragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#d4ead6',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+
+  // ── Pill tab ──
+  TabPill: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f7f0',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 20,
+    position: 'relative',
+  },
+  TabIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: '50%',
+    bottom: 4,
     backgroundColor: BrandColors.white,
-    borderRadius: 28,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 10,
+    borderRadius: 11,
+    shadowColor: BrandColors.deepGreen,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  CardTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: BrandColors.deepGreen,
-    marginBottom: 22,
+  TabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    zIndex: 1,
   },
-  InputGroup: {
-    marginBottom: 16,
+  TabBtnText: {
+    fontSize: 14,
   },
-  Label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: BrandColors.deepGreen,
-    marginBottom: 6,
-    letterSpacing: 0.2,
+
+  // ── Inputs ──
+  Field: {
+    marginBottom: 14,
+  },
+  FieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BrandColors.muted,
+    letterSpacing: 0.8,
+    marginBottom: 7,
   },
   Input: {
-    backgroundColor: '#f4faf4',
+    backgroundColor: '#f7fbf7',
     borderWidth: 1.5,
-    borderColor: '#d0ead2',
-    borderRadius: 12,
+    borderColor: '#d4ead6',
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 15,
     color: BrandColors.darkText,
   },
   PasswordRow: {
     flexDirection: 'row',
-    alignItems: 'center',
   },
   PasswordInput: {
     flex: 1,
@@ -357,51 +407,57 @@ const styles = StyleSheet.create({
     borderRightWidth: 0,
   },
   EyeBtn: {
-    backgroundColor: '#f4faf4',
+    backgroundColor: '#f7fbf7',
     borderWidth: 1.5,
-    borderColor: '#d0ead2',
+    borderColor: '#d4ead6',
     borderLeftWidth: 0,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    justifyContent: 'center',
   },
-  EyeIcon: {
-    fontSize: 16,
+
+  // ── Password strength ──
+  StrengthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
   },
+  StrengthTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  StrengthFill: {
+    height: 4,
+    borderRadius: 4,
+  },
+  StrengthLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 52,
+  },
+
+  // ── Submit ──
   SubmitBtn: {
     backgroundColor: BrandColors.midGreen,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 20,
     shadowColor: BrandColors.midGreen,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 6,
-  },
-  SubmitBtnDisabled: {
-    opacity: 0.7,
   },
   SubmitText: {
     color: BrandColors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
-  },
-  ToggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  TogglePrompt: {
-    color: BrandColors.muted,
-    fontSize: 14,
-  },
-  ToggleLink: {
-    color: BrandColors.midGreen,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

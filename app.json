@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sushi26.appBudgetScout9pE7"
+      "bundleIdentifier": "com.sushi26.appBudgetScout9pE7",
+      "infoPlist": {
+        "NSCameraUsageDescription": "BudgetScout needs camera access to scan receipts and barcodes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,6 +42,12 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow BudgetScout to find stores near you."
         }
       ]
     ],
