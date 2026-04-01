@@ -1,73 +1,28 @@
-/**
- * BudgetScout Brand Colors
- * #0b4c44 - Deep Forest Green (primary dark)
- * #64a668 - Mid Green (primary)
- * #a2dc90 - Light Mint Green (accent)
- * #ffffff - White
- */
-import { Platform } from 'react-native';
-
 export const BrandColors = {
-  deepGreen: '#0b4c44',
-  midGreen: '#64a668',
-  mintGreen: '#a2dc90',
-  white: '#ffffff',
-  offWhite: '#f4faf4',
-  lightGray: '#e8f5e9',
-  muted: '#7a9e7e',
-  darkText: '#0b2e29',
-  errorRed: '#e53935',
-  warningYellow: '#f9a825',
-};
+  // ── Teal family ───────────────────────────────────────────────────────────
+  deepTeal:   '#0d5c52',   // headers, primary buttons, active nav
+  midTeal:    '#147a6e',   // secondary buttons, scan CTA, tab bar active
+  lightTeal:  '#5bb5a8',   // icons, borders on dark backgrounds
+  mintTeal:   '#d4f0ec',   // card backgrounds, input field bg
+  paleGreen:  '#f0faf8',   // page background tint
 
-export const Colors = {
-  light: {
-    text: BrandColors.darkText,
-    background: BrandColors.offWhite,
-    tint: BrandColors.midGreen,
-    icon: BrandColors.muted,
-    tabIconDefault: BrandColors.muted,
-    tabIconSelected: BrandColors.deepGreen,
-    cardBackground: BrandColors.white,
-    border: BrandColors.lightGray,
-    headerBackground: BrandColors.deepGreen,
-    headerText: BrandColors.white,
-    saleCard: '#e8f5e9',
-    saleBorder: BrandColors.mintGreen,
-  },
-  dark: {
-    text: BrandColors.white,
-    background: '#0a1f1c',
-    tint: BrandColors.mintGreen,
-    icon: BrandColors.muted,
-    tabIconDefault: BrandColors.muted,
-    tabIconSelected: BrandColors.mintGreen,
-    cardBackground: '#122e29',
-    border: '#1e4a42',
-    headerBackground: '#071a17',
-    headerText: BrandColors.white,
-    saleCard: '#0f2e28',
-    saleBorder: BrandColors.midGreen,
-  },
-};
+  // ── Gold family ───────────────────────────────────────────────────────────
+  gold:       '#d4b02a',   // discount badges, sale highlights
+  lightGold:  '#f5d470',   // gold borders, secondary accents
+  paleGold:   '#fffbe8',   // pinned card backgrounds, starred rows
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+  // ── Neutrals ──────────────────────────────────────────────────────────────
+  darkText:   '#1a3a36',   // primary text
+  muted:      '#7aada4',   // secondary text, placeholders
+  white:      '#ffffff',
+  offWhite:   '#f5faf9',   // surface backgrounds
+
+  // ── Semantic ──────────────────────────────────────────────────────────────
+  error:      '#ef5350',
+  success:    '#147a6e',
+
+  // ── Legacy aliases (keeps old code from breaking) ─────────────────────────
+  deepGreen:  '#0d5c52',   // was deepGreen → now deepTeal
+  midGreen:   '#147a6e',   // was midGreen  → now midTeal
+  mintGreen:  '#d4f0ec',   // was mintGreen → now mintTeal
+};

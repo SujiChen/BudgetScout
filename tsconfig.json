@@ -6,7 +6,10 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": [
+      "react-native-svg"
+    ]
   },
   "include": [
     "**/*.ts",

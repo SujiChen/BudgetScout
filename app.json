@@ -12,7 +12,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sushi26.appBudgetScout9pE7",
       "infoPlist": {
-        "NSCameraUsageDescription": "BudgetScout needs camera access to scan receipts and barcodes."
+        "NSCameraUsageDescription": "BudgetScout needs camera access to scan receipts and barcodes.",
+        "NSLocationWhenInUseUsageDescription": "Allow BudgetScout to find stores near you.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {

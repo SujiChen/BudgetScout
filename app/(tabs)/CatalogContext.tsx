@@ -33,6 +33,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         if (Existing) {
           Existing.ScanCount += 1;
           Existing.LastScan   = Now;
+          if (Existing.ScanCount >= 3) Existing.Starred = true;
         } else {
           Updated.push({
             Id:         Date.now().toString() + Math.random().toString(36).slice(2),
