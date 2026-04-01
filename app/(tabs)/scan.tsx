@@ -28,8 +28,9 @@ import { useCatalog } from './CatalogContext';
 
 const { width } = Dimensions.get('window');
 
-// ─── Update this URL whenever ngrok restarts ──────────────────────────────────
-const SCAN_API_URL = 'http://129.161.136.64:5001/api/scan';
+// ─── UPDATE this every time ngrok restarts — run: ngrok http 5001 ─────────────
+const NGROK_URL   = 'https://king-breezy-amazingly.ngrok-free.dev';
+const SCAN_API_URL = `${NGROK_URL}/api/scan`;
 const RETICLE = {
   receipt: { w: width * 0.78, h: 200 },
   barcode: { w: width * 0.78, h: 110 },
@@ -39,36 +40,25 @@ type ScanMode   = 'receipt' | 'barcode';
 type ScanStatus = 'idle' | 'scanning' | 'success' | 'error';
 
 // ─── Call the scan server with a base64 image ─────────────────────────────────
-const SCAN_TIMEOUT_MS = 12000;
-
 async function CallScanAPI(base64Image: string): Promise<string[]> {
   console.log('Calling scan API:', SCAN_API_URL);
-
-  const Controller = new AbortController();
-  const TimeoutId  = setTimeout(() => Controller.abort(), SCAN_TIMEOUT_MS);
-
+  
   let res: Response;
   try {
     res = await fetch(SCAN_API_URL, {
-      method:  'POST',
+      method: 'POST',
       headers: {
-        'Content-Type':               'application/json',
+        'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true',
-        'User-Agent':                 'BudgetScoutApp',
+        'User-Agent': 'BudgetScoutApp',
       },
-      body:   JSON.stringify({ image: base64Image }),
-      signal: Controller.signal,
+      body: JSON.stringify({ image: base64Image }),
     });
   } catch (fetchErr: any) {
-    clearTimeout(TimeoutId);
-    if (fetchErr.name === 'AbortError') {
-      throw new Error('Scan timed out — is the server running?');
-    }
     console.error('Fetch threw:', fetchErr.message, fetchErr.cause);
     throw fetchErr;
   }
 
-  clearTimeout(TimeoutId);
   console.log('Response status:', res.status);
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
@@ -79,20 +69,6 @@ async function CallScanAPI(base64Image: string): Promise<string[]> {
   return json.items.map((item: { name: string; price: string }) =>
     `${item.name} — ${item.price}`
   );
-}
-
-// ─── Warm up the server on mount so first scan isn't slow ────────────────────
-function WarmUpServer() {
-  const baseUrl   = SCAN_API_URL.replace('/api/scan', '');
-  const Ctrl      = new AbortController();
-  const TimeoutId = setTimeout(() => Ctrl.abort(), 5000);
-  fetch(`${baseUrl}/health`, {
-    method:  'GET',
-    headers: { 'ngrok-skip-browser-warning': 'true', 'User-Agent': 'BudgetScoutApp' },
-    signal:  Ctrl.signal,
-  }).catch(() => {
-    // Silently ignore — just a warmup ping
-  }).finally(() => clearTimeout(TimeoutId));
 }
 
 export default function ScanScreen() {
@@ -113,7 +89,6 @@ export default function ScanScreen() {
 
   useEffect(() => {
     StartIdlePulse();
-    WarmUpServer();
   }, []);
 
   function StartIdlePulse() {
@@ -178,10 +153,9 @@ export default function ScanScreen() {
     try {
       // Take a photo and get base64
       const Photo = await CameraRef.current.takePictureAsync({
-        base64:         true,
-        quality:        0.15,
-        exif:           false,
-        skipProcessing: true,
+        base64:  true,
+        quality: 0.3,
+        exif:    false,
       });
 
       if (!Photo?.base64) throw new Error('Could not capture image');
@@ -202,9 +176,7 @@ export default function ScanScreen() {
       ReticleColor.value = withTiming(2, { duration: 300 });
       SetStatus('error');
       console.error('Scan error:', err.message);
-      Alert.alert('Scan Failed', err.message ?? 'Something went wrong. Try again.', [
-        { text: 'OK', onPress: ResetScan },
-      ]);
+      setTimeout(() => ResetScan(), 1800);
     }
   }
 
