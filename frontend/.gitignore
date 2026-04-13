@@ -2,6 +2,8 @@
 
 # dependencies
 node_modules/
+.expo/
+frontend/node_modules/
 
 # Expo
 .expo/
@@ -41,3 +43,4 @@ app-example
 # generated native folders
 /ios
 /android
+
