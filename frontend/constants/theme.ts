@@ -1,53 +1,28 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+export const BrandColors = {
+  // ── Teal family ───────────────────────────────────────────────────────────
+  deepTeal:   '#0d5c52',   // headers, primary buttons, active nav
+  midTeal:    '#147a6e',   // secondary buttons, scan CTA, tab bar active
+  lightTeal:  '#5bb5a8',   // icons, borders on dark backgrounds
+  mintTeal:   '#d4f0ec',   // card backgrounds, input field bg
+  paleGreen:  '#f0faf8',   // page background tint
 
-import { Platform } from 'react-native';
+  // ── Gold family ───────────────────────────────────────────────────────────
+  gold:       '#d4b02a',   // discount badges, sale highlights
+  lightGold:  '#f5d470',   // gold borders, secondary accents
+  paleGold:   '#fffbe8',   // pinned card backgrounds, starred rows
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+  // ── Neutrals ──────────────────────────────────────────────────────────────
+  darkText:   '#1a3a36',   // primary text
+  muted:      '#7aada4',   // secondary text, placeholders
+  white:      '#ffffff',
+  offWhite:   '#f5faf9',   // surface backgrounds
 
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  // ── Semantic ──────────────────────────────────────────────────────────────
+  error:      '#ef5350',
+  success:    '#147a6e',
+
+  // ── Legacy aliases (keeps old code from breaking) ─────────────────────────
+  deepGreen:  '#0d5c52',   // was deepGreen → now deepTeal
+  midGreen:   '#147a6e',   // was midGreen  → now midTeal
+  mintGreen:  '#d4f0ec',   // was mintGreen → now mintTeal
 };
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
