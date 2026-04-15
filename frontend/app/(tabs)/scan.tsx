@@ -29,7 +29,7 @@ import { useCatalog } from './CatalogContext';
 const { width } = Dimensions.get('window');
 
 // ─── UPDATE this every time ngrok restarts — run: ngrok http 5001 ─────────────
-const NGROK_URL   = 'https://king-breezy-amazingly.ngrok-free.dev';
+const NGROK_URL   = process.env.EXPO_PUBLIC_API_URL!;
 const SCAN_API_URL = `${NGROK_URL}/api/scan`;
 const RETICLE = {
   receipt: { w: width * 0.78, h: 200 },
