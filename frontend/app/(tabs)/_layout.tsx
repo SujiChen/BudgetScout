@@ -1,13 +1,20 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BrandColors } from '@/constants/theme';
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CatalogProvider } from './CatalogContext';
+import { Alert } from 'react-native';
+
+// fix TS warning
+type TabIconProps = {
+  color: string;
+  focused: boolean;
+};
 
 export default function TabLayout() {
-  const insets    = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 8);
 
   return (
@@ -37,20 +44,23 @@ export default function TabLayout() {
           },
         }}
       >
+        {/* HOME */}
         <Tabs.Screen
           name="index"
           options={{
             title: 'Home',
-            tabBarIcon: ({ color }) => (
+            tabBarIcon: ({ color }: { color: string }) => (
               <IconSymbol size={26} name="house.fill" color={color} />
             ),
           }}
         />
+
+        {/* SCAN */}
         <Tabs.Screen
           name="scan"
           options={{
             title: 'Scan',
-            tabBarIcon: ({ color, focused }) => (
+            tabBarIcon: ({ color, focused }: TabIconProps) => (
               <IconSymbol
                 size={focused ? 30 : 26}
                 name="camera.fill"
@@ -59,28 +69,66 @@ export default function TabLayout() {
             ),
           }}
         />
+
+        {/* CATALOG */}
         <Tabs.Screen
           name="explore"
           options={{
             title: 'Catalog',
-            tabBarIcon: ({ color }) => (
+            tabBarIcon: ({ color }: { color: string }) => (
               <IconSymbol size={26} name="list.bullet" color={color} />
             ),
           }}
         />
+
+        {/* STORES */}
         <Tabs.Screen
           name="shop"
           options={{
             title: 'Stores',
-            tabBarIcon: ({ color }) => (
+            tabBarIcon: ({ color }: { color: string }) => (
               <IconSymbol size={26} name="bag.fill" color={color} />
             ),
           }}
         />
-        {/* Hidden — not a tab, just a shared context file */}
+
+        {/* HIDDEN FILE */}
         <Tabs.Screen
           name="CatalogContext"
           options={{ href: null }}
+        />
+
+        {/* 🔥 SIGN OUT TAB */}
+        <Tabs.Screen
+          name="signout"
+          options={{
+            title: 'Sign Out',
+            tabBarIcon: ({ color }: { color: string }) => (
+              <IconSymbol
+                size={26}
+                name="arrow.right.square.fill"
+                color={color}
+              />
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+
+              Alert.alert(
+                'Sign Out',
+                'Are you sure you want to sign out?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Sign Out',
+                    style: 'destructive',
+                    onPress: () => router.replace('/signin'),
+                  },
+                ]
+              );
+            },
+          }}
         />
       </Tabs>
     </CatalogProvider>

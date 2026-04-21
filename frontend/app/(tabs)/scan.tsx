@@ -24,6 +24,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useCatalog } from './CatalogContext';
 
 const { width } = Dimensions.get('window');
@@ -41,9 +42,10 @@ type ScanStatus = 'idle' | 'scanning' | 'success' | 'error';
 
 // ─── Call the scan server with a base64 image ─────────────────────────────────
 async function CallScanAPI(base64Image: string): Promise<string[]> {
-  console.log('Calling scan API:', SCAN_API_URL);
-  
+  console.log("Calling scan API:", SCAN_API_URL);
+
   let res: Response;
+
   try {
     res = await fetch(SCAN_API_URL, {
       method: 'POST',
@@ -55,16 +57,30 @@ async function CallScanAPI(base64Image: string): Promise<string[]> {
       body: JSON.stringify({ image: base64Image }),
     });
   } catch (fetchErr: any) {
-    console.error('Fetch threw:', fetchErr.message, fetchErr.cause);
+    console.error('Fetch threw:', fetchErr.message);
     throw fetchErr;
   }
 
-  console.log('Response status:', res.status);
-  if (!res.ok) throw new Error(`Server error: ${res.status}`);
+  console.log("Response status:", res.status);
 
-  const json = await res.json();
-  console.log('Response JSON:', JSON.stringify(json).slice(0, 200));
-  if (!json.items || json.items.length === 0) throw new Error('No items found');
+  const text = await res.text();
+  console.log("Raw response:", text);
+
+  if (!res.ok) {
+    throw new Error(`Server error: ${res.status}`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("Invalid JSON from server");
+  }
+
+  if (!json.items || json.items.length === 0) {
+    console.log("No items found");
+    return [];
+  }
 
   return json.items.map((item: { name: string; price: string }) =>
     `${item.name} — ${item.price}`
@@ -73,6 +89,8 @@ async function CallScanAPI(base64Image: string): Promise<string[]> {
 
 export default function ScanScreen() {
   const { AddItems } = useCatalog();
+  const boxWidth  = useSharedValue(width * 0.78);
+  const boxHeight = useSharedValue(200);
 
   const [Permission, RequestPermission] = useCameraPermissions();
   const [Mode, SetMode]                 = useState<ScanMode>('receipt');
@@ -86,6 +104,29 @@ export default function ScanScreen() {
   const ScanLine      = useSharedValue(0);
   const SheetY        = useSharedValue(400);
   const ModeToggle    = useSharedValue(0);
+
+    const startWidth = useSharedValue(0);
+    const startHeight = useSharedValue(0);
+    
+    const pinch = Gesture.Pinch()
+      .onBegin(() => {
+        startWidth.value = boxWidth.value;
+        startHeight.value = boxHeight.value;
+      })
+      .onUpdate((e) => {
+        boxWidth.value = Math.max(150, startWidth.value * e.scale);
+        boxHeight.value = Math.max(100, startHeight.value * e.scale);
+      });
+     
+      const cornerDrag = Gesture.Pan()
+      .onBegin(() => {
+        startWidth.value = boxWidth.value;
+        startHeight.value = boxHeight.value;
+      })
+      .onUpdate((e) => {
+        boxWidth.value = Math.max(150, startWidth.value + e.translationX);
+        boxHeight.value = Math.max(100, startHeight.value + e.translationY);
+      });
 
   useEffect(() => {
     StartIdlePulse();
@@ -143,6 +184,13 @@ export default function ScanScreen() {
 
   async function HandleScan() {
     if (Status === 'scanning') return;
+
+    // force reset if previous scan finished
+    if (Status !== 'idle') {
+      ResetScan();
+      await new Promise(res => setTimeout(res, 200));
+    }
+    
     if (!CameraRef.current) return;
 
     SetStatus('scanning');
@@ -163,10 +211,31 @@ export default function ScanScreen() {
       // Send to scan server
       const Items = await CallScanAPI(Photo.base64);
 
-      StopScanLine();
-      ReticleColor.value = withTiming(1, { duration: 300 });
-      SetResults(Items);
-      SetStatus('success');
+StopScanLine();
+
+if (!Items || Items.length === 0) {
+  // ❗ Treat as failure instead of success
+  ReticleColor.value = withTiming(2, { duration: 300 });
+  SetStatus('error');
+
+  Alert.alert(
+    'Scan failed',
+    'Could not detect items. Try retaking the photo with better lighting or closer framing.'
+  );
+
+  setTimeout(() => ResetScan(), 1500);
+  return;
+}
+
+// ✅ Only success if items exist
+ReticleColor.value = withTiming(1, { duration: 300 });
+SetResults(Items);
+SetStatus('success');
+
+setTimeout(() => {
+  SetShowSheet(true);
+  SheetY.value = withSpring(0, { damping: 18, stiffness: 120 });
+}, 400);
       setTimeout(() => {
         SetShowSheet(true);
         SheetY.value = withSpring(0, { damping: 18, stiffness: 120 });
@@ -189,10 +258,18 @@ export default function ScanScreen() {
   const CurrentReticle = RETICLE[Mode];
 
   const ReticleStyle = useAnimatedStyle(() => ({
-    width:       CurrentReticle.w,
-    height:      CurrentReticle.h,
     borderColor: interpolateColor(ReticleColor.value, [0, 1, 2], ['#f9a825', BrandColors.mintGreen, '#ef5350']),
-    opacity:     ReticlePulse.value,
+    opacity: ReticlePulse.value,
+  }));
+
+  const ResizableBoxStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+  
+    width: boxWidth.value,
+    height: boxHeight.value,
+  
+    left: width / 2 - boxWidth.value / 2,
+    top: 250,
   }));
 
   const CornerColor = useAnimatedStyle(() => ({
@@ -201,7 +278,7 @@ export default function ScanScreen() {
 
   const ScanLineStyle = useAnimatedStyle(() => ({
     opacity:   Status === 'scanning' ? 0.9 : 0,
-    transform: [{ translateY: interpolate(ScanLine.value, [0, 1], [0, CurrentReticle.h - 2], Extrapolation.CLAMP) }],
+    transform: [{ translateY: interpolate(ScanLine.value, [0, 1], [0, boxHeight.value - 2], Extrapolation.CLAMP) }],
   }));
 
   const StatusBadgeStyle = useAnimatedStyle(() => ({
@@ -257,17 +334,24 @@ export default function ScanScreen() {
       </Animated.View>
 
       <View style={styles.ReticleArea}>
-        <Animated.View style={[styles.Reticle, ReticleStyle]}>
-          <Animated.View style={[styles.Corner, styles.CornerTL, CornerColor]} />
-          <Animated.View style={[styles.Corner, styles.CornerTR, CornerColor]} />
-          <Animated.View style={[styles.Corner, styles.CornerBL, CornerColor]} />
-          <Animated.View style={[styles.Corner, styles.CornerBR, CornerColor]} />
-          <Animated.View style={[styles.ScanLine, ScanLineStyle]} />
-        </Animated.View>
-        <Animated.View style={[styles.StatusBadge, StatusBadgeStyle]}>
-          <Text style={styles.StatusText}>{StatusLabel}</Text>
-        </Animated.View>
-      </View>
+      <Animated.View style={[styles.Reticle, ReticleStyle, ResizableBoxStyle]}>
+
+        {/* Corners */}
+        <Animated.View style={[styles.Corner, styles.CornerTL, CornerColor]} />
+        <Animated.View style={[styles.Corner, styles.CornerTR, CornerColor]} />
+        <Animated.View style={[styles.Corner, styles.CornerBL, CornerColor]} />
+        <Animated.View style={[styles.Corner, styles.CornerBR, CornerColor]} />
+
+        {/* Scan line */}
+        <Animated.View style={[styles.ScanLine, ScanLineStyle]} />
+
+        {/* Resize Handle (ONLY this has gesture) */}
+        <GestureDetector gesture={cornerDrag}>
+          <View style={styles.ResizeHandle} />
+        </GestureDetector>
+
+      </Animated.View>
+    </View>
 
       <View style={styles.ShutterArea}>
         <TouchableOpacity
@@ -367,4 +451,16 @@ const styles = StyleSheet.create({
   SheetBtnSecondaryText: { color: BrandColors.deepGreen, fontWeight: '700', fontSize: 14 },
   SheetBtnPrimary:       { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: BrandColors.midGreen, shadowColor: BrandColors.midGreen, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   SheetBtnPrimaryText:   { color: BrandColors.white, fontWeight: '700', fontSize: 14 },
+
+  ResizeHandle: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    right: -12,
+    bottom: -12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#2ecc71',
+  },
 });

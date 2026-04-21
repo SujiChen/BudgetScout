@@ -19,7 +19,32 @@ type CatalogContextType = {
 const CatalogContext = createContext<CatalogContextType | null>(null);
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [Items, SetItems] = useState<CatalogItem[]>([]);
+  const [Items, SetItems] = useState<CatalogItem[]>([
+    {
+      Id: '1',
+      Name: 'Milk',
+      ScanCount: 2,
+      LastScan: 'Just now',
+      PriceRange: '$3.99–$4.49',
+      Starred: true,
+    },
+    {
+      Id: '2',
+      Name: 'Eggs',
+      ScanCount: 1,
+      LastScan: 'Just now',
+      PriceRange: '$2.99–$3.49',
+      Starred: false,
+    },
+    {
+      Id: '3',
+      Name: 'Bananas',
+      ScanCount: 1,
+      LastScan: 'Just now',
+      PriceRange: '$1.50–$2.00',
+      Starred: false,
+    },
+  ]);
 
   function AddItems(names: string[]) {
     SetItems(Prev => {

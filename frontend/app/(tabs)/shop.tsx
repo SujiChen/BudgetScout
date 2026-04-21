@@ -1,4 +1,4 @@
-import { BrandColors } from '@/constants/theme';
+import { GLOBAL_ZIP } from '../(tabs)/index';import { BrandColors } from '@/constants/theme';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef as useMapRef, useRef, useState } from 'react';
@@ -84,9 +84,11 @@ async function FetchByNominatim(
   const cached = SuggestionCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.results;
 
+  const normalizedKey = chainKey.trim().toLowerCase();
+
   const chain =
     (Object.keys(CHAIN_CONFIG) as StoreChain[]).find(
-      c => CHAIN_CONFIG[c].OSMKey.toLowerCase() === chainKey.toLowerCase()
+      c => CHAIN_CONFIG[c].OSMKey.toLowerCase() === normalizedKey
     ) ?? 'Other';
 
   const delta = 0.4;
@@ -204,8 +206,34 @@ function StoreCard({
   );
 }
 
+// ─── Live search card ─────────────────────────────────────────────────────────
+function SearchResultCard({
+  Suggestion,
+  OnPress,
+}: {
+  Suggestion: StoreSuggestion;
+  OnPress: () => void;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={OnPress}>
+      <View style={styles.StoreCard}>
+        <StoreLogo Chain={Suggestion.Chain} Size={36} />
+        <View style={styles.StoreInfo}>
+          <Text style={styles.StoreName}>{Suggestion.Name}</Text>
+          <Text style={styles.StoreAddress} numberOfLines={1}>
+            {Suggestion.Address}
+          </Text>
+          <Text style={styles.StoreDistance}>{Suggestion.Miles.toFixed(1)} mi</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function StoresScreen() {
+  const [LiveResults, SetLiveResults] = useState<StoreSuggestion[]>([]);
+  const [SearchingLive, SetSearchingLive] = useState(false);
   const [Stores, SetStores] = useState<Store[]>(INITIAL_STORES);
   const [Search, SetSearch] = useState('');
   const [ShowModal, SetShowModal] = useState(false);
@@ -219,25 +247,48 @@ export default function StoresScreen() {
   const [SelectedStore, SetSelectedStore] = useState<Store | null>(null);
   const MapRef = useMapRef<MapView>(null);
   const SuggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    RequestLocation();
-  }, []);
+    const loadFromZip = async () => {
+      if (!GLOBAL_ZIP) return;
+  
+      try {
+        const result = await Location.geocodeAsync(GLOBAL_ZIP);
+  
+        if (result.length > 0) {
+          const { latitude, longitude } = result[0];
+  
+          SetUserCoords({
+            lat: latitude,
+            lon: longitude,
+          });
+        }
+      } catch (e) {
+        console.log('ZIP → coords failed', e);
+      }
+    };
+  
+    loadFromZip();
+  }, [GLOBAL_ZIP]); // ✅ THIS FIXES IT
 
-  async function RequestLocation() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      SetUserCoords({ lat: loc.coords.latitude, lon: loc.coords.longitude });
-      SetLocationDenied(false);
-    } else {
-      SetLocationDenied(true);
-    }
-  }
+  useEffect(() => {
+    if (!GLOBAL_ZIP) return;
+  
+    // Reset modal + search state when ZIP changes
+    SetSuggestions([]);
+    SetLiveResults([]);
+    SetSearch('');
+    SetNewAddress('');
+    SetShowModal(false);
+  }, [GLOBAL_ZIP]);
+
 
   // Fetch when modal opens or chain changes (no address typed)
   useEffect(() => {
-    if (!ShowModal || !UserCoords || NewAddress.trim()) return;
+    if (!ShowModal) return;
+    if (!UserCoords) return; // wait until coords exist
+    if (NewAddress.trim()) return;
     if (SuggestTimer.current) clearTimeout(SuggestTimer.current);
     SuggestTimer.current = setTimeout(async () => {
       SetLoadingSuggest(true);
@@ -253,7 +304,11 @@ export default function StoresScreen() {
         SetLoadingSuggest(false);
       }
     }, 300);
-  }, [NewChain, ShowModal, UserCoords]);
+
+    return () => {
+      if (SuggestTimer.current) clearTimeout(SuggestTimer.current);
+    };
+  }, [NewChain, ShowModal, UserCoords, NewAddress, GLOBAL_ZIP]);
 
   // Live search as user types — geocode address then find chain near it
   useEffect(() => {
@@ -276,17 +331,45 @@ export default function StoresScreen() {
         SetLoadingSuggest(false);
       }
     }, 600);
+
+    return () => {
+      if (SuggestTimer.current) clearTimeout(SuggestTimer.current);
+    };
   }, [NewAddress, ShowModal, UserCoords, NewChain]);
+
+  // Main search bar live search
+  useEffect(() => {
+    if (SearchTimer.current) clearTimeout(SearchTimer.current);
+
+    if (!Search.trim() || !UserCoords) {
+      SetLiveResults([]);
+      SetSearchingLive(false);
+      return;
+    }
+
+    SearchTimer.current = setTimeout(async () => {
+      SetSearchingLive(true);
+      try {
+        const results = await FetchByNominatim(UserCoords.lat, UserCoords.lon, Search.trim(), 40);
+        const deduped = results
+          .map(s => ({ ...s, Miles: HaversineMiles(UserCoords.lat, UserCoords.lon, s.Lat, s.Lon) }))
+          .sort((a, b) => a.Miles - b.Miles);
+        SetLiveResults(deduped);
+      } catch {
+        SetLiveResults([]);
+      } finally {
+        SetSearchingLive(false);
+      }
+    }, 450);
+
+    return () => {
+      if (SearchTimer.current) clearTimeout(SearchTimer.current);
+    };
+  }, [Search, UserCoords]);
 
   const FilteredSuggestions = Suggestions;
 
-  const FilteredStores = Search.trim()
-    ? Stores.filter(
-        S =>
-          S.Name.toLowerCase().includes(Search.toLowerCase()) ||
-          S.Address.toLowerCase().includes(Search.toLowerCase())
-      )
-    : Stores;
+  const FilteredStores = Stores;
 
   function HandleRemove(Id: string) {
     Alert.alert('Remove Store', 'Remove this store?', [
@@ -317,24 +400,63 @@ export default function StoresScreen() {
 
   function HandleSelectSuggestion(S: StoreSuggestion) {
     const miles = UserCoords ? HaversineMiles(UserCoords.lat, UserCoords.lon, S.Lat, S.Lon) : S.Miles;
-    SetStores(P => [
-      ...P,
-      {
-        Id: Date.now().toString(),
-        Name: S.Name,
-        Address: S.Address,
-        Distance: `${miles.toFixed(1)} mi`,
-        Chain: S.Chain,
-        Lat: S.Lat,
-        Lon: S.Lon,
-        Favorited: false,
-      },
-    ]);
+
+    SetStores(P => {
+      const alreadyExists = P.some(
+        store =>
+          store.Name === S.Name &&
+          store.Address === S.Address &&
+          store.Lat === S.Lat &&
+          store.Lon === S.Lon
+      );
+
+      if (alreadyExists) return P;
+
+      return [
+        ...P,
+        {
+          Id: Date.now().toString(),
+          Name: S.Name,
+          Address: S.Address,
+          Distance: `${miles.toFixed(1)} mi`,
+          Chain: S.Chain,
+          Lat: S.Lat,
+          Lon: S.Lon,
+          Favorited: false,
+        },
+      ];
+    });
+
+    SetSelectedStore({
+      Id: Date.now().toString(),
+      Name: S.Name,
+      Address: S.Address,
+      Distance: `${miles.toFixed(1)} mi`,
+      Chain: S.Chain,
+      Lat: S.Lat,
+      Lon: S.Lon,
+      Favorited: false,
+    });
+
+    if (S.Lat && S.Lon) {
+      MapRef.current?.animateToRegion(
+        {
+          latitude: S.Lat,
+          longitude: S.Lon,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        },
+        500
+      );
+    }
+
     SetNewAddress('');
     SetNewChain('Walmart');
     SetSuggestions([]);
     SetShowManual(false);
     SetShowModal(false);
+    SetSearch('');
+    SetLiveResults([]);
   }
 
   async function HandleAddManual() {
@@ -443,20 +565,80 @@ export default function StoresScreen() {
             </View>
           </View>
         )}
-
-        {Stores.length === 0 && (
-          <View style={styles.MapEmptyOverlay}>
-            <Text style={styles.MapEmptyText}>Add stores to see them on the map</Text>
-          </View>
-        )}
       </View>
 
       {/* ── List ── */}
-      <View style={styles.ListSection}>
-        {SortedStores.length === 0 ? (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.ListSection}
+      >
+        <View style={styles.BottomBar}>
+          <View style={styles.SearchBar}>
+            <Image source={require('@/assets/images/search.png')} style={styles.SearchIconImg} />
+            <TextInput
+              style={styles.SearchInput}
+              placeholder="Search stores…"
+              placeholderTextColor={BrandColors.muted}
+              value={Search}
+              onChangeText={SetSearch}
+              autoCorrect={false}
+            />
+            {Search.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  SetSearch('');
+                  SetLiveResults([]);
+                }}
+              >
+                <Text style={styles.SearchClear}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.FAB}
+            onPress={() => {
+              if (!UserCoords) {
+                Alert.alert('Loading location...', 'Please wait a second and try again.');
+                return;
+              }
+              SetShowModal(true);
+            }}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.FABIcon}>+</Text>
+          </TouchableOpacity>
+        </View>
+
+        {Search.trim() ? (
+          SearchingLive ? (
+            <View style={styles.SearchLoadingWrap}>
+              <ActivityIndicator size="small" color={BrandColors.midGreen} />
+              <Text style={styles.SuggestLoadingText}>Searching nearby stores…</Text>
+            </View>
+          ) : LiveResults.length === 0 ? (
+            <View style={styles.EmptyState}>
+              <Text style={styles.EmptyTitle}>No stores found</Text>
+              <Text style={styles.EmptySub}>Try a different search.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={LiveResults}
+              keyExtractor={(item, index) => `${item.Name}-${item.Address}-${index}`}
+              contentContainerStyle={styles.ListContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <SearchResultCard
+                  Suggestion={item}
+                  OnPress={() => HandleSelectSuggestion(item)}
+                />
+              )}
+            />
+          )
+        ) : SortedStores.length === 0 ? (
           <View style={styles.EmptyState}>
-            <Text style={styles.EmptyTitle}>{Search ? 'No stores found' : 'No stores added yet'}</Text>
-            <Text style={styles.EmptySub}>{Search ? 'Try a different search.' : 'Tap + to add your first store.'}</Text>
+            <Text style={styles.EmptyTitle}>No stores added yet</Text>
+            <Text style={styles.EmptySub}>Tap + to add your first store.</Text>
           </View>
         ) : (
           <FlatList
@@ -496,33 +678,7 @@ export default function StoresScreen() {
             }}
           />
         )}
-      </View>
-
-
-
-
-{/* ── Bottom bar ── */}
-      <View style={styles.BottomBar}>
-        <View style={styles.SearchBar}>
-          <Image source={require('@/assets/images/search.png')} style={styles.SearchIconImg} />
-          <TextInput
-            style={styles.SearchInput}
-            placeholder="Search stores…"
-            placeholderTextColor={BrandColors.muted}
-            value={Search}
-            onChangeText={SetSearch}
-            autoCorrect={false}
-          />
-          {Search.length > 0 && (
-            <TouchableOpacity onPress={() => SetSearch('')}>
-              <Text style={styles.SearchClear}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <TouchableOpacity style={styles.FAB} onPress={() => SetShowModal(true)} activeOpacity={0.88}>
-          <Text style={styles.FABIcon}>+</Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
 
       <Modal visible={ShowModal} transparent animationType="slide" onRequestClose={() => SetShowModal(false)}>
         <KeyboardAvoidingView style={styles.ModalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -560,7 +716,14 @@ export default function StoresScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-
+              {!UserCoords && (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={BrandColors.midGreen} />
+                <Text style={{ marginTop: 6, color: BrandColors.muted }}>
+                  Loading location...
+                </Text>
+              </View>
+            )}
               {LoadingSuggest && (
                 <View style={styles.SuggestLoading}>
                   <ActivityIndicator size="small" color={BrandColors.midGreen} />
@@ -679,7 +842,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  SearchIconImg:   { width: 85, height: 35, resizeMode: 'contain', marginLeft: -30 },
+  SearchIconImg: { width: 85, height: 35, resizeMode: 'contain', marginLeft: -30 },
   SearchInput: { flex: 1, fontSize: 15, color: BrandColors.darkText, marginLeft: -25 },
   SearchClear: { fontSize: 13, color: BrandColors.muted, fontWeight: '700' },
 
@@ -818,6 +981,14 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   FABIcon: { fontSize: 28, color: BrandColors.white, fontWeight: '300', marginTop: -2 },
+
+  SearchLoadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+    paddingTop: 20,
+  },
 
   ModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   ModalSheet: {
